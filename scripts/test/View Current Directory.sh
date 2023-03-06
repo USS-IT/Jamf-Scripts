@@ -1,5 +1,52 @@
 #!/bin/bash
 
+
+###########
+# This script performs three actions. 
+#
+# First, it removes any existing volumes with the names "Workshop" or "Project".
+#
+# Second, we check if the currently logged in user is admin. If they are an admin,
+# we mount the Workshop drive as their user (it prompts for credentials). Otherwise,
+# it mounts the Workshop drive as the guest user.
+#
+# Third, we perform a dock update if specific pre-requistes are met. If this is the
+# first time a user has logged in or if the dock has not been updated for more than
+# a month, we perform a dock update. Otherwise, no dock update is performed.
+###########
+
+##### Part 1: Remove volumes and syslinks.
+
+# search the volumes folder and keep all the workshop and project drives.
+driveList=`ls /Volumes | grep -e Workshop -e Project`
+
+# iterate over driveList
+for value in ${driveList}
+do
+	# unmount the current workshop drive
+	diskutil unmount force '/Volumes/'${value} 2> /dev/null
+    
+    # remove the symbolic link to this drive
+    rm -rf '/Volumes/'${value} 2> /dev/null
+done
+##### End Part 1
+##### Part 2: Mount workshop drive.
+
+loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ && ! /loginwindow/ { print $3 }' )
+
+#check if current user is an admin
+if [groups $loggedInUser | grep -q -w admin]; then
+	#mount the project drive and project drive as the current user.
+	open 'smb://'$loggedInUser':@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
+	
+else
+	# mount only the workshop drive as a gust
+	open 'smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
+fi
+
+##### End Part 2
+##### Part 3: Check and perform dock update.
+
 ### begin variables ###
 # get username of currently logged in user
 loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ && ! /loginwindow/ { print $3 }' )
@@ -141,3 +188,7 @@ if [ $updateNow == "1" ] || [ $lastUpdate != $currentMonth]; then
 else
 	echo "INFO: Dock is up to date!"
 fi
+
+exit 0
+##### End Part 3
+##### End script
