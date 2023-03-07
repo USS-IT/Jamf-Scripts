@@ -25,6 +25,7 @@ dockItems="DockItems"
 jamfStoragePath="$homeDirectory/$jamfStorage"
 dockHistoryPath="$jamfStoragePath/$dockHistory"
 dockItemsPath="$jamfStoragePath/$dockItems"
+loopTimeout=30
 
 ###
 # A simple logging function that prints to screen the passed type and message.
@@ -60,47 +61,33 @@ removeVolumes () {
 	log "INFO" "Volumes successfully removed!"
 }
 
-##
+###
 # Function to mount workshop drive as current user if admin or as 
 # guest if not admin.
-##
-mountWorkshop() {
-	# TODO the code commented below works to mount workshop as the current user
-	# if admin. However, when it copies the dockitems over, this causes issues with
-	# permissions and the dock icons themselves. for now, leaving in code to be
-	# returned at a later date if needed.
-	#
-	# 
-	#
-	# check if current user is an admin
-	# if [ $( groups $loggedInUser | tr " " "\n" | grep -w "admin") ]; then
-	# 	log "INFO" "Attemping to mount Workshop as current user!"
-	#
-	# 	#mount the project drive and project drive as the current user.
-	# 	open "smb://$loggedInUser:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop"
-	#
-	# else
-	# 	log "INFO" "Attempting to mount Workshop as guest!"
-	#
-	# 	# mount only the workshop drive as a gust
-	# 	open 'smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
-	# fi
-	
+###
+mountWorkshopAsGuest() {
 	log "INFO" "Attempting to mount Workshop as guest!"
 	
-	# mount t The workshop drive as a gust
+	# mount the workshop drive as a gust
 	open 'smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
 	
-	
-	
+	waitForWorkshopMount
+}
+
+###
+# Short loop that waits to for mounting procedure to complete before contiuing.
+###
+waitForWorkshopMount() {
 	local driveMounted=0
 	
-	# while drive is not mounted, check again until mounted.
-	while (($driveMounted == 0))
+	# while drive is not mounted, check again until mounted or timeout runs out
+	# timeout is set to 60 seconds.
+	while (($driveMounted == 0)) && (($loopTimeout > 0))
 	do
 		local driveMounted=$( ls /Volumes | grep -e Workshop -c)
 		#log "VAR" "driveMounted=$driveMounted"
 		sleep 2
+		loopTimeout=$((loopTimeout--))
 	done
 	
 	log "INFO" "Successfully mounted Workshop drive!"
@@ -124,6 +111,7 @@ checkStorageDirectory () {
 ###
 # Small helper function to make sure the storage file already exists.
 # If it does not exist, this function creates and populates it.
+###
 checkStorageFile() {
 	## At this point, we are now in /User/$loggedInUser/.JamfStorage.
 	# check if $dockUpdate already exists, otherwise create it, and setup formatting in file
@@ -143,6 +131,10 @@ checkStorageFile() {
 	fi
 }
 
+###
+# Performs Dock setup using dockutil.
+# Note: If we cd to any other directory before this, THIS WILL FAIL (learned the hard way).
+###
 updateDock() {
 	# Set up variables
 	export PATH=/usr/bin:/bin:/usr/sbin:/sbin
@@ -218,7 +210,9 @@ copyDockItems() {
 	cp -r /Volumes/Workshop/DockItems/ "$dockItemsPath"
 }
 
-
+###
+# Performs various checks for local storage and determines where or not dock needs updating.
+###
 handleDock () {
 	# begin variables
 	local currentMonth=$( date +%B )
@@ -247,17 +241,35 @@ handleDock () {
 }
 
 ###
+# Checks if user is admin, and mounts Workshop as current user if they are admin.
+###
+checkIfAdmin () {
+	# check if current user is an admin
+	if [ $( groups $loggedInUser | tr " " "\n" | grep -w "admin") ]; then
+		log "INFO" "Current user is admin! Unmounting Workshop drive!"
+		removeVolumes
+		
+		log "INFO" "Attemping to mount Workshop as current user!"
+
+		#mount the project drive and project drive as the current user.
+		open "smb://$loggedInUser:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop"
+
+	else
+		log "INFO" "Current user is not admin."
+	fi
+}
+
+###
 # Main function
 ###
 main () {
-	log "INFO" "Calling removeVolumes."
 	removeVolumes
 	
-	log "INFO" "Calling mountWorkshop."
-	mountWorkshop
+	mountWorkshopAsGuest
 	
-	log "INFO" "Calling handleDock."
 	handleDock
+	
+	checkIfAdmin
 	
 	log "INFO" "Script complete, exit 0."
 	exit 0
