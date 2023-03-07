@@ -44,15 +44,12 @@ removeVolumes () {
 	# iterate over driveList
 	for value in ${driveList}
 	do
-		local output=""
-		local error=""
 		# unmount the current workshop drive
-		diskutil unmount force "/Volumes/${value}" > output 2> error
-		
-		log "INFO" $output
+		local error=$(diskutil unmount force "/Volumes/${value}" 1> /dev/null)
+		log "ERROR" "$error"
     
 	    # remove the symbolic link to this drive
-	    rm -rf "/Volumes/${value}" 2> /dev/null
+	    rm -rf "/Volumes/${value}" 1> /dev/null
 	done
 	
 	log "INFO" "Volumes successfully removed!"
@@ -64,14 +61,11 @@ removeVolumes () {
 ##
 mountWorkshop() {
 	#check if current user is an admin
-	if [ groups "$loggedInUser" | grep -qw "admin" ]; then
+	if [ $( groups "$loggedInUser" | grep -qw "admin") ]; then
 		log "INFO" "Attemping to mount Workshop as current user!"
 		
 		#mount the project drive and project drive as the current user.
 		open 'smb://'$loggedInUser':@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
-		
-		# extra sleep to allow user time to type in password
-		sleep 20
 	
 	else
 		log "INFO" "Attempting to mount Workshop as guest!"
@@ -80,8 +74,15 @@ mountWorkshop() {
 		open 'smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
 	fi
 	
-	# TODO Change this function from using sleep to a for loop that continually checks
-	# the /Volumes folder for a Workshop drive. We can continue after the drive as mounted.
+	local driveMounted=0
+	
+	# while drive is not mounted, check again until mounted.
+	while (($driveMounted == 0))
+	do
+		local driveMounted=$( ls /Volumes | grep -e Workshop -c)
+		#log "VAR" "driveMounted=$driveMounted"
+		sleep 2
+	done
 	
 	log "INFO" "Successfully mounted Workshop drive!"
 }
@@ -113,116 +114,87 @@ checkStorageFile() {
 
 		# write to the file with some basic info
 		echo "# This file contains the month the dock was last updated." >> $dockUpdate
-		echo "lastUpdate=$currentMonth)">> $dockUpdate
+		echo "lastUpdate=$currentMonth">> $dockUpdate
 
 		#since file was just created, this user's dock is incorrect.
-		$1="1"
+		return 1
 	else
 		log "INFO" "$dockUpdate exists!"
+		return 0
 	fi
 }
 
 updateDock() {
 	# Set up variables
-	whoami="/usr/bin/whoami"
+	# whoami="/usr/bin/whoami"
 	# echo="/bin/echo"
 	# sudo="/usr/bin/sudo"
 	# grep="/usr/bin/grep"
 	# ls="/usr/bin/ls"
-	dockutil="/usr/local/bin/dockutil"
-	# killall="/usr/bin/killall"
+	local dockutil="/usr/local/bin/dockutil"
+	local killall="/usr/bin/killall"
 	local UserPlist=$homeDirectory/Library/Preferences/com.apple.dock.plist
-
-	##########################################################################################
+	
 	# Check if script is running as root
-	##########################################################################################
-	echo
-
 	if [ `$whoami` != root ]; then
 	    log "ERROR" "updateDock: This script must be run using sudo or as root. Exiting..."
-	    exit 1
+	    exit 5
 	fi
+	
+	local OS=$(sw_vers -productVersion)
 
-	##########################################################################################
+	###
 	# Use Dockutil to Modify Logged-In User's Dock
-	##########################################################################################
-	echo "----------------------------------------------------------------------"
-	echo "Dockutil script to modify logged-in user's Dock"
-	echo "----------------------------------------------------------------------"
-	echo "Current logged-in user: $loggedInUser"
-	echo "----------------------------------------------------------------------"
-	echo "Removing all Items from the Logged-In User's Dock..."
+	###
+	log "INFO" "Removing all Items from the Logged-In User's Dock..."
 	sudo -u $loggedInUser $dockutil --remove all --no-restart $UserPlist
+	
+	#TODO have OS check to determine which System Preferences/Settings application to add to dock.
 
-	echo "Creating New Dock..."
-	echo
-	echo "Adding \"Finder\"..."
-
-	echo "Adding \"System Preferences\"..."
-	sudo -u $loggedInUser $dockutil --add "/System/Applications/System Preferences.app" --no-restart $UserPlist
-
-	echo "Adding \"Google Chrome\"..."
+	log "INFO" "Creating new dock..."
+	
+	# In macOS Ventura, System Preferences was renamed to System Settings. We perform an OS version
+	# check here to make sure we add the correct one to the dock
+	if (($OS <= 13)); then
+		log "INFO" "macOS Monterey or older detected, adding System Preferences."
+		sudo -u $loggedInUser $dockutil --add "/System/Applications/System Preferences.app" --no-restart $UserPlist
+	else
+		log "INFO" "macOS Ventura or newer detected, adding System Preferences."
+		sudo -u $loggedInUser $dockutil --add "/System/Applications/System Settings.app" --no-restart $UserPlist
+	fi
+	
 	sudo -u $loggedInUser $dockutil --add "/Applications/Google Chrome.app" --no-restart $UserPlist
-
-	echo "Adding \"Safari\"..."
 	sudo -u $loggedInUser $dockutil --add "/Applications/Safari.app" --no-restart $UserPlist
-
-	echo "Adding \"Firefox\"..."
 	sudo -u $loggedInUser $dockutil --add "/Applications/Firefox.app" --no-restart $UserPlist
-
-	echo "Adding \"Crestron AirMedia\"..."
 	sudo -u $loggedInUser $dockutil --add "/Applications/Crestron/Crestron AirMedia.app" --no-restart $UserPlist
-
-	echo "Adding \"JHU Self Service\"..."
 	sudo -u $loggedInUser $dockutil --add "/Applications/JHU Self Service.app" --no-restart $UserPlist
-
-	echo "Adding \"Documents\"..."
 	sudo -u $loggedInUser $dockutil --add "~/Documents" --section others --view auto --display folder --no-restart $UserPlist
-
-	echo "Adding \"Audio\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Audio" --section others --view fan --display folder --no-restart $UserPlist
-
-	echo "Adding \"Graphics & Photos\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist
-
-	echo "Adding \"Creative Code & Programming\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist
-
-	echo "Adding \"3D Design & Printing\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist
-
-	echo "Adding \"Video\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Video" --section others --view fan --display folder --no-restart $UserPlist
-
-	echo "Adding \"Office & Documents\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist
-
-	echo "Adding \"Chat & Communication\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist
-
-	echo "Adding \"Bookit\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist
-
-	echo "Adding \"DMC Knowledge Base\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist
-
-	echo "Adding \"Hopkins Groups\"..."
 	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist
 
-	echo "Restarting Dock..."
+	log "INFO" "Restarting Dock..."
 	sudo -u $loggedInUser $killall Dock
+	
+	log "INFO" "Dock update complete!"
 }
 
 
 handleDock () {
-	### begin variables ###
+	# begin variables
 	local storage=".JamfStorage"
 	local dockUpdate="dockUpdate.txt"
-	local updateNow="0"
 	local currentMonth=$( date +%B )
-	### end variables ###
+	# end variables
 
-	#move into their directory
+	# move into their directory
 	cd $homeDirectory
 
 	# check to make sure the storage directory already exists and if not create it.
@@ -232,16 +204,20 @@ handleDock () {
 	cd $storage
 
 	# check to make sure the $dockUpdate file exists and if not create it.
-	checkStorageFile updateNow
+	checkStorageFile
+	local updateNow=$?
+	#log "VAR" "updateNow=$updateNow"
 
 	# grab the last month the dock was updated
 	local lastUpdate=$( grep "lastUpdate" dockUpdate.txt | awk -F"=" '{ print $2 }' )
 
 	# if the dock has never been set OR if the month is different, then set the dock
 	if [ $updateNow == "1" ] || [ $lastUpdate != $currentMonth ]; then
+		#log "VAR" "lastUpdate=$lastUpdate"
+		#log "VAR" "currentMonth=$currentMonth"
 		updateDock
 	else
-		echo "INFO: Dock is up to date!"
+		log "INFO" "Dock is up to date!"
 	fi
 }
 
@@ -255,9 +231,10 @@ main () {
 	log "INFO" "Calling mountWorkshop."
 	mountWorkshop
 	
-	log "INFO" "calling handleDock."
+	log "INFO" "Calling handleDock."
 	handleDock
 	
+	log "INFO" "Script complete, exit 0."
 	exit 0
 }
 
