@@ -18,7 +18,7 @@
 # Global Variables
 ###
 loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ && ! /loginwindow/ { print $3 }' )
-homeDirectory="/Users/$loggedInUser/"
+homeDirectory="/Users/$loggedInUser"
 
 ###
 # A simple logging function that prints to screen the passed type and message.
@@ -93,9 +93,9 @@ mountWorkshop() {
 ###
 checkStorageDirectory () {
 	# check if $storage directory already exists, otherwise create it.
-	if [ ! -d $storage ]; then
+	if [ ! -d "$homeDirectory/$storage" ]; then
 		log "INFO" "$storage does not exist, creating..."
-		mkdir $storage
+		mkdir "$homeDirectory/$storage"
 	else
 		log "INFO" "$storage exists!"
 	fi
@@ -107,13 +107,13 @@ checkStorageDirectory () {
 checkStorageFile() {
 	## At this point, we are now in /User/$loggedInUser/.JamfStorage.
 	# check if $dockUpdate already exists, otherwise create it, and setup formatting in file
-	if [ ! -f $dockUpdate ]; then
+	if [ ! -f "$homeDirectory/$storage/$dockUpdate" ]; then
 		log "INFO" "$dockUpdate does not exist, creating..."
-		touch $dockUpdate
+		touch "$homeDirectory/$storage/$dockUpdate"
 
 		# write to the file with some basic info
-		echo "# This file contains the month the dock was last updated." >> $dockUpdate
-		echo "lastUpdate=$currentMonth">> $dockUpdate
+		echo "# This file contains the month the dock was last updated." >> "$homeDirectory/$storage/$dockUpdate"
+		echo "lastUpdate=$currentMonth">> "$homeDirectory/$storage/$dockUpdate"
 
 		#since file was just created, this user's dock is incorrect.
 		return 1
@@ -133,7 +133,7 @@ updateDock() {
 	local ls="/usr/bin/ls"
 	local dockutil="/usr/local/bin/dockutil"
 	local killall="/usr/bin/killall"
-	local UserPlist=$homeDirectory/Library/Preferences/com.apple.dock.plist
+	local UserPlist="$homeDirectory/Library/Preferences/com.apple.dock.plist"
 	
 	# Check if script is running as root
 	if [ `$whoami` != root ]; then
@@ -167,16 +167,16 @@ updateDock() {
 	$sudo -u $loggedInUser $dockutil --add "/Applications/Crestron/Crestron AirMedia.app" --no-restart $UserPlist
 	$sudo -u $loggedInUser $dockutil --add "/Applications/JHU Self Service.app" --no-restart $UserPlist
 	$sudo -u $loggedInUser $dockutil --add "~/Documents" --section others --view auto --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/Audio" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/Video" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Audio" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Video" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist
 
 	log "INFO" "Restarting Dock..."
 	$sudo -u $loggedInUser $killall Dock
@@ -191,11 +191,11 @@ updateDock() {
 copyDockItems() {
 	#delete folder if it already exists.
 	log "INFO" "Deleting user's DockItems folder"
-	rm -rf DockItems/
+	rm -rf $homeDirectory/$storage/DockItems
 	
 	#copy over the DockItems folder from the Workshop drive to the user's local .JamfStorage folder.
 	log "INFO" "Copying DockItems"
-	cp -r /Volumes/Workshop/DockItems/ ./DockItems/
+	cp -r /Volumes/Workshop/DockItems/ $homeDirectory/$storage/DockItems
 }
 
 
@@ -207,13 +207,13 @@ handleDock () {
 	# end variables
 
 	# move into their directory
-	cd $homeDirectory
+	#cd $homeDirectory
 
 	# check to make sure the storage directory already exists and if not create it.
 	checkStorageDirectory
 
 	# move into the storage directory
-	cd $storage
+	#cd $storage
 
 	# check to make sure the $dockUpdate file exists and if not create it.
 	checkStorageFile
