@@ -126,11 +126,12 @@ checkStorageFile() {
 
 updateDock() {
 	# Set up variables
-	# whoami="/usr/bin/whoami"
-	# echo="/bin/echo"
-	# sudo="/usr/bin/sudo"
-	# grep="/usr/bin/grep"
-	# ls="/usr/bin/ls"
+	export PATH=/usr/bin:/bin:/usr/sbin:/sbin
+	whoami="/usr/bin/whoami"
+	echo="/bin/echo"
+	local sudo="/usr/bin/sudo"
+	local grep="/usr/bin/grep"
+	local ls="/usr/bin/ls"
 	local dockutil="/usr/local/bin/dockutil"
 	local killall="/usr/bin/killall"
 	local UserPlist=$homeDirectory/Library/Preferences/com.apple.dock.plist
