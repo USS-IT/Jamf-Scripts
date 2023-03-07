@@ -26,6 +26,9 @@ jamfStoragePath="$homeDirectory/$jamfStorage"
 dockHistoryPath="$jamfStoragePath/$dockHistory"
 dockItemsPath="$jamfStoragePath/$dockItems"
 loopTimeout=30
+mountPoint="/Volumes/.mntpoint"
+workshopMountPoint="$mountPoint/Workshop"
+projectMountPoint="$mountPoint/Project"
 
 ###
 # A simple logging function that prints to screen the passed type and message.
@@ -44,21 +47,45 @@ log () {
 # system links as well.
 ###
 removeVolumes () {
-	# search the volumes folder and keep all the workshop and project drives.
+	
+	if [ -d "$mountPoint" ]; then
+		log "INFO" "$mountPoint exists! Removing any existing mount points from it."
+		
+		local driveList=$( ls $mountPoint | grep -e Workshop -e Project )
+	
+		# iterate over driveList
+		for value in ${driveList}
+		do
+			# unmount the drive
+			local error=$(diskutil unmount force "$mountPoint/${value}" 1> /dev/null)
+			log "ERROR" "$error"
+    
+	    	# remove the symbolic link to this drive
+	    	rm -rf "$mountPoint/${value}" 1> /dev/null
+		done
+	
+	else
+		log "INFO" "mountPoint does not exist! creating..."
+		mkdir $mountPoint
+	fi
+	
+	
+	log "INFO" "Removing any existing volumes previous mapped manually."
 	local driveList=$( ls /Volumes | grep -e Workshop -e Project )
 
 	# iterate over driveList
 	for value in ${driveList}
 	do
-		# unmount the current workshop drive
+		# unmount the drive
 		local error=$(diskutil unmount force "/Volumes/${value}" 1> /dev/null)
 		log "ERROR" "$error"
-    
-	    # remove the symbolic link to this drive
-	    rm -rf "/Volumes/${value}" 1> /dev/null
+
+    	# remove the symbolic link to this drive
+    	rm -rf "/Volumes/${value}" 1> /dev/null
 	done
 	
 	log "INFO" "Volumes successfully removed!"
+	
 }
 
 ###
@@ -68,14 +95,18 @@ removeVolumes () {
 mountWorkshopAsGuest() {
 	log "INFO" "Attempting to mount Workshop as guest!"
 	
+	# create the mount point
+	mkdir "$workshopMountPoint"
+	
 	# mount the workshop drive as a gust
-	open 'smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
+	# using mount_smbfs allows us to mount the drive without Finder opening up everytime (very annoying)
+	mount_smbfs "smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop" "$workshopMountPoint"
 	
 	waitForWorkshopMount
 }
 
 ###
-# Short loop that waits to for mounting procedure to complete before contiuing.
+# Short loop that waits to for Workshop mounting procedure to complete before contiuing.
 ###
 waitForWorkshopMount() {
 	local driveMounted=0
@@ -84,13 +115,32 @@ waitForWorkshopMount() {
 	# timeout is set to 60 seconds.
 	while (($driveMounted == 0)) && (($loopTimeout > 0))
 	do
-		local driveMounted=$( ls /Volumes | grep -e Workshop -c)
+		local driveMounted=$( ls $mountPoint | grep -e Workshop -c)
 		#log "VAR" "driveMounted=$driveMounted"
 		sleep 2
 		loopTimeout=$((loopTimeout--))
 	done
 	
 	log "INFO" "Successfully mounted Workshop drive!"
+}
+
+###
+# Short loop that waits to for Project mounting procedure to complete before contiuing.
+###
+waitForProjectMount() {
+	local driveMounted=0
+	
+	# while drive is not mounted, check again until mounted or timeout runs out
+	# timeout is set to 60 seconds.
+	while (($driveMounted == 0)) && (($loopTimeout > 0))
+	do
+		local driveMounted=$( ls /Volumes | grep -e Project -c)
+		#log "VAR" "driveMounted=$driveMounted"
+		sleep 2
+		loopTimeout=$((loopTimeout--))
+	done
+	
+	log "INFO" "Successfully mounted Project drive!"
 }
 
 
@@ -121,7 +171,7 @@ checkStorageFile() {
 
 		# write to the file with some basic info
 		echo "# This file contains the month the dock was last updated." >> "$dockHistoryPath"
-		echo "lastUpdate=$currentMonth">> "$dockHistoryPath"
+		echo "lastUpdate=$currentMonth" >> "$dockHistoryPath"
 
 		#since file was just created, this user's dock is incorrect.
 		return 1
@@ -207,7 +257,7 @@ copyDockItems() {
 	
 	#copy over the DockItems folder from the Workshop drive to the user's local .JamfStorage folder.
 	log "INFO" "Copying DockItems"
-	cp -r /Volumes/Workshop/DockItems/ "$dockItemsPath"
+	cp -r "$workshopMountPoint/DockItems/" "$dockItemsPath"
 }
 
 ###
@@ -249,9 +299,15 @@ checkIfAdmin () {
 		log "INFO" "Current user is admin! Unmounting Workshop drive!"
 		removeVolumes
 		
-		log "INFO" "Attemping to mount Workshop as current user!"
+		log "INFO" "Attemping to mount Project as current user!"
 
-		#mount the project drive and project drive as the current user.
+		# mount the project drive and workshop drive as the current user.
+		# due to credential requirement, we must use open rather than
+		# the superior mount_smbfs
+		open "smb://$loggedInUser:@HW-DMC-HIPPO.win.ad.jhu.edu/Project"
+		waitForProjectMount
+		
+		# we don't need to wait for workshop to mount since it won't prompt for credentials
 		open "smb://$loggedInUser:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop"
 
 	else
