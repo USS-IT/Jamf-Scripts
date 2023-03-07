@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 ###########
 # This script performs three actions. 
 #
@@ -170,21 +169,35 @@ updateDock() {
 	sudo -u $loggedInUser $dockutil --add "/Applications/Crestron/Crestron AirMedia.app" --no-restart $UserPlist
 	sudo -u $loggedInUser $dockutil --add "/Applications/JHU Self Service.app" --no-restart $UserPlist
 	sudo -u $loggedInUser $dockutil --add "~/Documents" --section others --view auto --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Audio" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Video" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Volumes/Workshop/DockItems/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/Audio" --section others --view fan --display folder --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/Video" --section others --view fan --display folder --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist
+	sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist
 
 	log "INFO" "Restarting Dock..."
 	sudo -u $loggedInUser $killall Dock
 	
 	log "INFO" "Dock update complete!"
+}
+
+###
+# Helper function to copy the DockIcons from the Workshop drive locally.
+# TODO: rather than having the dock icons stored in each user's profile, copy them elsewhere for all to have access to.
+###
+copyDockItems() {
+	#delete folder if it already exists.
+	log "INFO" "Deleting user's DockItems folder"
+	rm -rf DockItems/
+	
+	#copy over the DockItems folder from the Workshop drive to the user's local .JamfStorage folder.
+	log "INFO" "Copying DockItems"
+	cp -r /Volumes/Workshop/DockItems/ ./DockItems/
 }
 
 
@@ -216,6 +229,7 @@ handleDock () {
 	if [ $updateNow == "1" ] || [ $lastUpdate != $currentMonth ]; then
 		#log "VAR" "lastUpdate=$lastUpdate"
 		#log "VAR" "currentMonth=$currentMonth"
+		copyDockItems
 		updateDock
 	else
 		log "INFO" "Dock is up to date!"
@@ -241,7 +255,3 @@ main () {
 
 # call the main function
 main
-
-
-
-
