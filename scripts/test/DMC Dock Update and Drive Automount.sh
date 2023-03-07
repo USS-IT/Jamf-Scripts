@@ -316,9 +316,27 @@ checkIfAdmin () {
 }
 
 ###
+# Displays a simple notification notifying the user that the dock is updating.
+###
+startingNotification() {
+	osascript -e 'display notification "Updating your dock. Please wait a moment." with title "DMC Dock Update"'
+	sleep 5
+}
+
+###
+# Displays a simple notification notifying the user that the dock update is complete.
+###
+completeNotification() {
+	osascript -e 'display notification "Dock update complete!" with title "DMC Dock Update"'
+	sleep 5
+}
+
+###
 # Main function
 ###
 main () {
+	startingNotification
+	
 	removeVolumes
 	
 	mountWorkshopAsGuest
@@ -326,6 +344,8 @@ main () {
 	handleDock
 	
 	checkIfAdmin
+	
+	completeNotification
 	
 	log "INFO" "Script complete, exit 0."
 	exit 0
