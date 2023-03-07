@@ -65,19 +65,33 @@ removeVolumes () {
 # guest if not admin.
 ##
 mountWorkshop() {
-	#check if current user is an admin
-	if [ $( groups "$loggedInUser" | grep -qw "admin") ]; then
-		log "INFO" "Attemping to mount Workshop as current user!"
-		
-		#mount the project drive and project drive as the current user.
-		open 'smb://'$loggedInUser':@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
+	# TODO the code commented below works to mount workshop as the current user
+	# if admin. However, when it copies the dockitems over, this causes issues with
+	# permissions and the dock icons themselves. for now, leaving in code to be
+	# returned at a later date if needed.
+	#
+	# 
+	#
+	# check if current user is an admin
+	# if [ $( groups $loggedInUser | tr " " "\n" | grep -w "admin") ]; then
+	# 	log "INFO" "Attemping to mount Workshop as current user!"
+	#
+	# 	#mount the project drive and project drive as the current user.
+	# 	open "smb://$loggedInUser:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop"
+	#
+	# else
+	# 	log "INFO" "Attempting to mount Workshop as guest!"
+	#
+	# 	# mount only the workshop drive as a gust
+	# 	open 'smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
+	# fi
 	
-	else
-		log "INFO" "Attempting to mount Workshop as guest!"
-		
-		# mount only the workshop drive as a gust
-		open 'smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
-	fi
+	log "INFO" "Attempting to mount Workshop as guest!"
+	
+	# mount t The workshop drive as a gust
+	open 'smb://guest:@HW-DMC-HIPPO.win.ad.jhu.edu/Workshop'
+	
+	
 	
 	local driveMounted=0
 	
@@ -160,7 +174,7 @@ updateDock() {
 		log "INFO" "macOS Monterey or older detected, adding System Preferences."
 		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Preferences.app" --no-restart $UserPlist 1> /dev/null
 	else
-		log "INFO" "macOS Ventura or newer detected, adding System Preferences."
+		log "INFO" "macOS Ventura or newer detected, adding System Settings."
 		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Settings.app" --no-restart $UserPlist 1> /dev/null
 	fi
 	
