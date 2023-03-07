@@ -126,8 +126,8 @@ checkStorageFile() {
 updateDock() {
 	# Set up variables
 	export PATH=/usr/bin:/bin:/usr/sbin:/sbin
-	whoami="/usr/bin/whoami"
-	echo="/bin/echo"
+	local whoami="/usr/bin/whoami"
+	local echo="/bin/echo"
 	local sudo="/usr/bin/sudo"
 	local grep="/usr/bin/grep"
 	local ls="/usr/bin/ls"
@@ -147,9 +147,7 @@ updateDock() {
 	# Use Dockutil to Modify Logged-In User's Dock
 	###
 	log "INFO" "Removing all Items from the Logged-In User's Dock..."
-	sudo -u $loggedInUser $dockutil --remove all --no-restart $UserPlist
-	
-	#TODO have OS check to determine which System Preferences/Settings application to add to dock.
+	$sudo -u $loggedInUser $dockutil --remove all --no-restart $UserPlist
 
 	log "INFO" "Creating new dock..."
 	
@@ -157,31 +155,31 @@ updateDock() {
 	# check here to make sure we add the correct one to the dock
 	if (($OS <= 13)); then
 		log "INFO" "macOS Monterey or older detected, adding System Preferences."
-		sudo -u $loggedInUser $dockutil --add "/System/Applications/System Preferences.app" --no-restart $UserPlist
+		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Preferences.app" --no-restart $UserPlist
 	else
 		log "INFO" "macOS Ventura or newer detected, adding System Preferences."
-		sudo -u $loggedInUser $dockutil --add "/System/Applications/System Settings.app" --no-restart $UserPlist
+		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Settings.app" --no-restart $UserPlist
 	fi
 	
-	sudo -u $loggedInUser $dockutil --add "/Applications/Google Chrome.app" --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Applications/Safari.app" --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Applications/Firefox.app" --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Applications/Crestron/Crestron AirMedia.app" --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "/Applications/JHU Self Service.app" --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "~/Documents" --section others --view auto --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/Audio" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/Video" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist
-	sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "/Applications/Google Chrome.app" --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "/Applications/Safari.app" --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "/Applications/Firefox.app" --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "/Applications/Crestron/Crestron AirMedia.app" --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "/Applications/JHU Self Service.app" --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "~/Documents" --section others --view auto --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/Audio" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/Video" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --add "./DockItems/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist
 
 	log "INFO" "Restarting Dock..."
-	sudo -u $loggedInUser $killall Dock
+	$sudo -u $loggedInUser $killall Dock
 	
 	log "INFO" "Dock update complete!"
 }
