@@ -19,6 +19,12 @@
 ###
 loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ && ! /loginwindow/ { print $3 }' )
 homeDirectory="/Users/$loggedInUser"
+jamfStorage=".JamfStorage"
+dockHistory="dockHistory.txt"
+dockItems="DockItems"
+jamfStoragePath="$homeDirectory/$jamfStorage"
+dockHistoryPath="$jamfStoragePath/$dockHistory"
+dockItemsPath="$jamfStoragePath/$dockItems"
 
 ###
 # A simple logging function that prints to screen the passed type and message.
@@ -93,11 +99,11 @@ mountWorkshop() {
 ###
 checkStorageDirectory () {
 	# check if $storage directory already exists, otherwise create it.
-	if [ ! -d "$homeDirectory/$storage" ]; then
-		log "INFO" "$storage does not exist, creating..."
-		mkdir "$homeDirectory/$storage"
+	if [ ! -d "$jamfStoragePath" ]; then
+		log "INFO" "$jamfStorage does not exist, creating..."
+		mkdir "$jamfStoragePath"
 	else
-		log "INFO" "$storage exists!"
+		log "INFO" "$jamfStorage exists!"
 	fi
 }
 
@@ -107,18 +113,18 @@ checkStorageDirectory () {
 checkStorageFile() {
 	## At this point, we are now in /User/$loggedInUser/.JamfStorage.
 	# check if $dockUpdate already exists, otherwise create it, and setup formatting in file
-	if [ ! -f "$homeDirectory/$storage/$dockUpdate" ]; then
-		log "INFO" "$dockUpdate does not exist, creating..."
-		touch "$homeDirectory/$storage/$dockUpdate"
+	if [ ! -f "$dockHistoryPath" ]; then
+		log "INFO" "$dockHistory does not exist, creating..."
+		touch "$dockHistoryPath"
 
 		# write to the file with some basic info
-		echo "# This file contains the month the dock was last updated." >> "$homeDirectory/$storage/$dockUpdate"
-		echo "lastUpdate=$currentMonth">> "$homeDirectory/$storage/$dockUpdate"
+		echo "# This file contains the month the dock was last updated." >> "$dockHistoryPath"
+		echo "lastUpdate=$currentMonth">> "$dockHistoryPath"
 
 		#since file was just created, this user's dock is incorrect.
 		return 1
 	else
-		log "INFO" "$dockUpdate exists!"
+		log "INFO" "$dockHistory exists!"
 		return 0
 	fi
 }
@@ -134,52 +140,52 @@ updateDock() {
 	local dockutil="/usr/local/bin/dockutil"
 	local killall="/usr/bin/killall"
 	local UserPlist="$homeDirectory/Library/Preferences/com.apple.dock.plist"
+	local OS=$(sw_vers -productVersion)
 	
 	# Check if script is running as root
 	if [ `$whoami` != root ]; then
 	    log "ERROR" "updateDock: This script must be run using sudo or as root. Exiting..."
 	    exit 5
 	fi
-	
-	local OS=$(sw_vers -productVersion)
 
-	###
-	# Use Dockutil to Modify Logged-In User's Dock
-	###
+	# remove existing dock
 	log "INFO" "Removing all Items from the Logged-In User's Dock..."
-	$sudo -u $loggedInUser $dockutil --remove all --no-restart $UserPlist
+	$sudo -u $loggedInUser $dockutil --remove all --no-restart $UserPlist 1> /dev/null
 
 	log "INFO" "Creating new dock..."
 	
 	# In macOS Ventura, System Preferences was renamed to System Settings. We perform an OS version
 	# check here to make sure we add the correct one to the dock
-	if (($OS <= 13)); then
+	if (( $(echo "$OS < 13" | bc -l) )); then
 		log "INFO" "macOS Monterey or older detected, adding System Preferences."
-		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Preferences.app" --no-restart $UserPlist
+		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Preferences.app" --no-restart $UserPlist 1> /dev/null
 	else
 		log "INFO" "macOS Ventura or newer detected, adding System Preferences."
-		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Settings.app" --no-restart $UserPlist
+		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Settings.app" --no-restart $UserPlist 1> /dev/null
 	fi
 	
-	$sudo -u $loggedInUser $dockutil --add "/Applications/Google Chrome.app" --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "/Applications/Safari.app" --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "/Applications/Firefox.app" --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "/Applications/Crestron/Crestron AirMedia.app" --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "/Applications/JHU Self Service.app" --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "~/Documents" --section others --view auto --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Audio" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Video" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist
-	$sudo -u $loggedInUser $dockutil --add "$homeDirectory/$storage/DockItems/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist
+	# add new dock icons.
+	# TODO convert these commands into single command with array of items to be added.
+	$sudo -u $loggedInUser $dockutil --add "/Applications/Google Chrome.app" --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "/Applications/Safari.app" --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "/Applications/Firefox.app" --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "/Applications/Crestron/Crestron AirMedia.app" --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "/Applications/JHU Self Service.app" --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "~/Documents" --section others --view auto --display folder --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/Audio" --section others --view fan --display folder --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/Graphics & Photos" --section others --view fan --display folder --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/Creative Code & Programming" --section others --view fan --display folder --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/3D Design & Printing" --section others --view fan --display folder --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/Video" --section others --view fan --display folder --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/Office & Documents" --section others --view fan --display folder --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/Chat & Communication" --section others --view fan --display folder --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/webclips/DMC BookIt!.webloc" --section others --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/webclips/DMC Knowledge Base.webloc" --section others --no-restart $UserPlist 1> /dev/null
+	$sudo -u $loggedInUser $dockutil --add "$dockItemsPath/webclips/HopkinsGroups.webloc" --section others --no-restart $UserPlist 1> /dev/null
 
+	# restart dock task
 	log "INFO" "Restarting Dock..."
-	$sudo -u $loggedInUser $killall Dock
+	$sudo -u $loggedInUser $killall Dock 1> /dev/null
 	
 	log "INFO" "Dock update complete!"
 }
@@ -191,29 +197,21 @@ updateDock() {
 copyDockItems() {
 	#delete folder if it already exists.
 	log "INFO" "Deleting user's DockItems folder"
-	rm -rf $homeDirectory/$storage/DockItems
+	rm -rf "$dockItemsPath"
 	
 	#copy over the DockItems folder from the Workshop drive to the user's local .JamfStorage folder.
 	log "INFO" "Copying DockItems"
-	cp -r /Volumes/Workshop/DockItems/ $homeDirectory/$storage/DockItems
+	cp -r /Volumes/Workshop/DockItems/ "$dockItemsPath"
 }
 
 
 handleDock () {
 	# begin variables
-	local storage=".JamfStorage"
-	local dockUpdate="dockUpdate.txt"
 	local currentMonth=$( date +%B )
 	# end variables
 
-	# move into their directory
-	#cd $homeDirectory
-
 	# check to make sure the storage directory already exists and if not create it.
 	checkStorageDirectory
-
-	# move into the storage directory
-	#cd $storage
 
 	# check to make sure the $dockUpdate file exists and if not create it.
 	checkStorageFile
@@ -221,7 +219,7 @@ handleDock () {
 	#log "VAR" "updateNow=$updateNow"
 
 	# grab the last month the dock was updated
-	local lastUpdate=$( grep "lastUpdate" dockUpdate.txt | awk -F"=" '{ print $2 }' )
+	local lastUpdate=$( grep "lastUpdate" $dockHistoryPath | awk -F"=" '{ print $2 }' )
 
 	# if the dock has never been set OR if the month is different, then set the dock
 	if [ $updateNow == "1" ] || [ $lastUpdate != $currentMonth ]; then
