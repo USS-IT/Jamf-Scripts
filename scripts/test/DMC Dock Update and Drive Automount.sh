@@ -18,6 +18,7 @@
 # Global Variables
 ###
 loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ && ! /loginwindow/ { print $3 }' )
+loggedInUserID=$(id -u "$loggedInUser")
 homeDirectory="/Users/$loggedInUser"
 jamfStorage=".JamfStorage"
 dockHistory="dockHistory.txt"
@@ -319,7 +320,7 @@ checkIfAdmin () {
 # Displays a simple notification notifying the user that the dock is updating.
 ###
 startingNotification() {
-	osascript -e 'display notification "Updating your dock. Please wait a moment." with title "DMC Dock Update"'
+	launchctl asuser "$loggedInUserID" osascript -e 'display notification "Updating your dock. Please wait a moment." with title "DMC Dock Update"'
 	sleep 5
 }
 
@@ -327,7 +328,7 @@ startingNotification() {
 # Displays a simple notification notifying the user that the dock update is complete.
 ###
 completeNotification() {
-	osascript -e 'display notification "Dock update complete!" with title "DMC Dock Update"'
+	launchctl asuser "$loggedInUserID" osascript -e 'display notification "Dock update complete!" with title "DMC Dock Update"'
 	sleep 5
 }
 
