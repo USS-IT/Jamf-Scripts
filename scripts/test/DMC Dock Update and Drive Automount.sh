@@ -297,10 +297,10 @@ handleDock () {
 checkIfAdmin () {
 	# check if current user is an admin
 	if [ $( groups $loggedInUser | tr " " "\n" | grep -w "admin") ]; then
-		log "INFO" "Current user is admin! Unmounting Workshop drive!"
+		log "INFO" "Current user is admin! Unmounting guest Workshop drive!"
 		removeVolumes
 		
-		log "INFO" "Attemping to mount Project as current user!"
+		log "INFO" "Attemping to mount Project and Workshop as current user!"
 
 		# mount the project drive and workshop drive as the current user.
 		# due to credential requirement, we must use open rather than
@@ -316,20 +316,30 @@ checkIfAdmin () {
 	fi
 }
 
+#TODO update these notification functions to use jamfHelper or terminal-notifier
+
 ###
 # Displays a simple notification notifying the user that the dock is updating.
 ###
 startingNotification() {
-	launchctl asuser "$loggedInUserID" osascript -e 'display notification "Updating your dock. Please wait a moment." with title "DMC Dock Update"'
-	sleep 5
+	launchctl asuser "$loggedInUserID" osascript <<EOD
+		display notification "Updating your dock. Please wait a moment." with title "DMC Dock Update"
+		
+		delay 5
+EOD
+#Note: EOD cannot be indented to properly exit from osascript.
 }
 
 ###
 # Displays a simple notification notifying the user that the dock update is complete.
 ###
 completeNotification() {
-	launchctl asuser "$loggedInUserID" osascript -e 'display notification "Dock update complete!" with title "DMC Dock Update"'
-	sleep 5
+	launchctl asuser "$loggedInUserID" osascript <<EOD
+		display notification "Dock update complete!" with title "DMC Dock Update"
+		
+		delay 5
+EOD
+#Note: EOD cannot be indented to properly exit from osascript.
 }
 
 ###
