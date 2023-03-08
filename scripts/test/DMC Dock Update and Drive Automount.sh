@@ -213,7 +213,7 @@ updateDock() {
 	
 	# In macOS Ventura, System Preferences was renamed to System Settings. We perform an OS version
 	# check here to make sure we add the correct one to the dock
-	if (( $(echo "$OS < 13" | bc -l) )); then
+	if (( $(echo "$OS 13" | awk '{print ($1 < $2)}') )); then
 		log "INFO" "macOS Monterey or older detected, adding System Preferences."
 		$sudo -u $loggedInUser $dockutil --add "/System/Applications/System Preferences.app" --no-restart $UserPlist 1> /dev/null
 	else
