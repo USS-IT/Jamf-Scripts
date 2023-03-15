@@ -30,6 +30,7 @@ loopTimeout=30
 mountPoint="/Volumes/.mntpoint"
 workshopMountPoint="$mountPoint/Workshop"
 projectMountPoint="$mountPoint/Project"
+forcedDockUpdate="0"
 
 ###
 # A simple logging function that prints to screen the passed type and message.
@@ -201,7 +202,7 @@ updateDock() {
 	
 	# Check if script is running as root
 	if [ `$whoami` != root ]; then
-	    log "ERROR" "updateDock: This script must be run using sudo or as root. Exiting..."
+	    log "ERROR" "updateDock: This script must be run using sudo or as root, exit 5"
 	    exit 5
 	fi
 
@@ -281,7 +282,7 @@ handleDock () {
 	local lastUpdate=$( grep "lastUpdate" $dockHistoryPath | awk -F"=" '{ print $2 }' )
 
 	# if the dock has never been set OR if the month is different, then set the dock
-	if [ $updateNow == "1" ] || [ $lastUpdate != $currentMonth ]; then
+	if [ $updateNow == "1" ] || [ $forcedDockUpdate == "1" ] || [ $lastUpdate != $currentMonth ]; then
 		#log "VAR" "lastUpdate=$lastUpdate"
 		#log "VAR" "currentMonth=$currentMonth"
 		copyDockItems
@@ -343,10 +344,33 @@ EOD
 }
 
 ###
+# Checks for "-r" flag to force a dock update.
+###
+checkFlags() {
+	local OPTIND
+	
+	while getopts ":r" flag
+	do
+		case "$flag" in
+			r)
+				forcedDockUpdate="1"
+				log "INFO" "Dock update forced!";;
+			*)
+				log "ERROR" "Invalid arugment passed: -$OPTARG, exit 10"
+				exit 10;
+				;;
+		esac
+	done
+	shift $((OPTIND-1))
+}
+
+###
 # Main function
 ###
 main () {
 	startingNotification
+	
+	checkFlags "$@"
 	
 	removeVolumes
 	
@@ -363,4 +387,4 @@ main () {
 }
 
 # call the main function
-main
+main "$@"
