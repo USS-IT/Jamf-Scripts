@@ -364,7 +364,7 @@ checkFlags() {
 	done
 	shift $((OPTIND-1))
 	
-	if [ ! -z $4] && [$4 = "update"]; then
+	if [ ! -z $4] && [$4 == "update"]; then
 		forcedDockUpdate="1"
 		log "INFO" "Dock update forced!"
 	fi
