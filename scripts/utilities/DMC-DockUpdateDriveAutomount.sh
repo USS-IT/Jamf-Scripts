@@ -344,15 +344,16 @@ EOD
 }
 
 ###
-# Checks for "-r" flag to force a dock update.
+# Checks for "-u" flag to force a dock update if run via command line.
+# Also checks for "update" param if run through jamf
 ###
 checkFlags() {
 	local OPTIND
 	
-	while getopts ":r" flag
+	while getopts ":u" flag
 	do
 		case "$flag" in
-			r)
+			u)
 				forcedDockUpdate="1"
 				log "INFO" "Dock update forced!";;
 			*)
@@ -362,6 +363,12 @@ checkFlags() {
 		esac
 	done
 	shift $((OPTIND-1))
+	
+	if [ ! -z $4] && [$4 = "update"]; then
+		forcedDockUpdate="1"
+		log "INFO" "Dock update forced!"
+	fi
+	
 }
 
 ###
