@@ -8,6 +8,7 @@ toolkitCommand="$toolkitPath/adobe-licensing-toolkit"
 toolkitFailure="Operation Failed"
 toolkitSuccess="Operation Succeeded"
 toolkitOutput=$($toolkitCommand --deactivate | grep "$toolkitFailure")
+licenseFilesDirectory="/Library/Application\ Support/Adobe/OperatingConfigs"
 
 ###
 # A simple logging function that prints to screen the passed type and message.
@@ -38,9 +39,21 @@ deactivateLicense () {
   fi
 }
 
+removeLicenseFiles () {
+  sudo rm -rf "$licenseFilesDirectory" 1> /dev/null
+}
+
+removeAdobeToolkit () {
+  sudo rm -rf /Volumes/tempAdobe/ 1> /dev/null
+}
+
 main () {
 
   deactivateLicense
+
+  removeLicenseFiles
+
+  removeAdobeToolkit
 
 	log "INFO" "Script complete, exit 0."
 	exit 0
@@ -48,5 +61,3 @@ main () {
 
 # call the main function
 main "$@"
-
-#rm -rf /Volumes/tempAdobe/
